@@ -1,0 +1,99 @@
+package minin;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Scanner;
+import java.util.Set;
+import java.util.TreeSet;
+
+public class Baskets1 
+{
+
+	  static final int numberOfItems = 4281;
+	  static final int numberOfBaskets = 992;
+	  static final int numberOfPopulations = 26;
+	  static final String[] populationNames = new String[]{
+		"ESN", "GWD", "LWK", "MSL", "YRI", "ACB", "ASW", "CLM", "MXL", "PEL", "PUR",
+		"CDX", "CHB", "CHS", "JPT", "KHV", "CEU", "GBR", "FIN", "IBS", "TSI", 
+		"BEB", "GIH", "ITU", "PJL", "STU" };
+	  int minSupport = 0;
+	  int itemsetSize = 0;
+	  int[] sampleOrigins = new int[numberOfBaskets];
+	  int[] populationSize = new int[numberOfPopulations];
+	  ArrayList<HashSet<Integer>> inverted = new ArrayList<HashSet<Integer>>();
+	  ArrayList<HashSet<Integer>> candidates = new ArrayList<HashSet<Integer>>();
+
+	  public Baskets1(int s, int i){ minSupport = s; itemsetSize = i; }
+
+	  void readBaskets(String filename){ // inverted index
+		Scanner in = null;
+		try {
+			in = new Scanner(new File(filename));
+		}catch (FileNotFoundException e){
+			System.err.println(filename + " not found");
+			System.exit(1);
+		}
+		for (int i = 0; i < numberOfItems; i++) inverted.add(new HashSet<Integer>());// no of items in total
+		for (int i = 0; i < numberOfPopulations; i++) populationSize[i] = 0;// no of populations for each item.
+		for (int i = 0; i < numberOfBaskets; i++)// every basket as a population name in start  
+		{
+			String line = in.nextLine();  
+			String[] terms = line.split(" ");
+			int len = terms.length - 1;
+			String[] titles = terms[0].split("\t");// 1st term is population name in the line   
+			int k = 0; for (; k < numberOfPopulations; k++) 
+				if (titles[1].equals(populationNames[k])) break;// in titles 1 st term is inored only 2nd term is captured and sompared to all te  population names
+			if (k == numberOfPopulations) System.out.println(titles[1]);
+			sampleOrigins[i] = k; populationSize[k]++;// here te population size is incremented every it time we see tat name  
+			for (int j = 0; j < len; j++)
+			{
+				inverted.get(Integer.parseInt(terms[j + 1])).add(i);// for every item in 4281 we have a hashSet and we add basket number to it 
+			}
+		}
+		in.close();
+	  }
+
+	  HashSet<Integer> support(Set<Integer> itemset)
+	  {
+		HashSet<Integer> intersection = new HashSet<Integer>();
+		boolean first = true;
+		for (int i: itemset) if (first)
+		{
+			first = false; intersection.addAll(inverted.get(i));// adds the baskets first elements  
+		}
+		else intersection.retainAll(inverted.get(i));// remove items tat are not present in the nw list wic we add
+		return intersection;// tis will contain all te baskets tat contains all items in te itemset  
+	  }
+
+	  void SE(int k, TreeSet<Integer> S)
+	  {
+		HashSet<Integer> supportBaskets = support(S);// tis will contain all te baskets tat contains all items in te itemset 
+	   	if (S.isEmpty() || supportBaskets.size() > minSupport && S.size() <= itemsetSize)
+		{ 
+			if (S.size() == itemsetSize) printout(S, supportBaskets);  // cecks if itemsetb sixe is equak to our requirement
+		}
+		else return; 
+	        for (int j = k; j < numberOfItems; j++){ S.add(j); SE(j + 1, S); S.remove(j); }// ere we enumerate trou all te combinations of items
+	  }
+
+	  void printout(Set<Integer> S, Set<Integer> T)// T is sample baskets and S is items set 
+	  {
+		for (int j: S) System.out.print(j + " ");  // prints out all the items that are considered
+		System.out.println();
+		int[] counts = new int[numberOfPopulations];
+		for (int i = 0; i < numberOfPopulations; i++) counts[i] = 0;
+		for (int j: T) counts[sampleOrigins[j]]++; // every basket as a sample origin which means a population name 
+		for (int i = 0; i < numberOfPopulations; i++) if (counts[i] > 0)
+			System.out.println(populationNames[i] + " " + counts[i] + "/" +
+				populationSize[i]);// counts is how many times it occurred in the support basket and population size is how many times it occurred in all te baskets 
+	  }
+
+	 public static void main(String[] args)
+	 {
+		Baskets1 baskets1 = new Baskets1(300, 300);
+		baskets1.readBaskets("src/minin/Ybaskets.txt");
+		baskets1.SE(0, new TreeSet<Integer>());
+	 }
+}
